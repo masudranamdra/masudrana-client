@@ -17,10 +17,33 @@ export const GoogleAuthButton = ({ mode, callbackURL = '/dashboard' }: GoogleAut
   const handleGoogleAuth = async () => {
     setLoading(true);
     try {
-      // Redirect to backend Google OAuth endpoint
+      // Call backend Google OAuth endpoint with POST request
       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:10000/api';
-      const authUrl = `${apiBase}/auth/sign-in/social?provider=google&callbackURL=${encodeURIComponent(callbackURL)}`;
-      window.location.href = authUrl;
+      const response = await fetch(`${apiBase}/auth/sign-in/social`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          provider: 'google',
+          callbackURL,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`OAuth request failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.url) {
+        // Redirect to Google OAuth authorization URL
+        window.location.href = data.url;
+      } else if (data.redirect && data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No authorization URL received from OAuth provider');
+      }
     } catch (error) {
       console.error('Google auth error:', error);
       toast.error('Google authentication could not be started.');
